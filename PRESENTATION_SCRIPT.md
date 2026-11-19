@@ -1,5 +1,6 @@
 # Presentation Script: AirScope India
 **Scalable Analysis of Hourly Air Quality Data from Indian Monitoring Stations Using Apache PySpark**
+
 Presenters: **Jnanottam** (J) and **Harshavardha** (H) · Total time: about 10–12 minutes
 
 > Before presenting: run the analysis on the real `city_hour.csv` and fill in every **[ ]** with the number shown on screen. Don't guess numbers.
@@ -23,6 +24,7 @@ Presenters: **Jnanottam** (J) and **Harshavardha** (H) · Total time: about 10�
 *Scroll to "Six questions".*
 
 **J:** We set out to answer six questions:
+
 1. **When** is the air worst: which months, seasons and hours?
 2. **Where** is it worst: which cities and stations?
 3. How often is each city in Good vs Severe air?
@@ -40,12 +42,14 @@ Presenters: **Jnanottam** (J) and **Harshavardha** (H) · Total time: about 10�
 **H:** Thank you. Our dataset is **"Air Quality Data in India 2015–2020"** from Kaggle. It's original CPCB data. It covers 12 pollutants plus the AQI value and AQI category for every hour.
 
 **H:** In terms of the **V's of Big Data**:
+
 - **Volume:** millions of rows.
 - **Variety:** sensor readings plus station metadata.
 - **Veracity:** a lot of missing values, because sensors fail.
 - **Velocity:** new data arrives every hour, though we process it as a historical batch.
 
 **H:** Our pipeline has five steps:
+
 1. **Ingest:** read the CSV with a fixed schema.
 2. **Clean:** remove duplicate readings, and blank out impossible values like negative or extremely high readings.
 3. **Enrich:** join station names and cities, and add year, month, hour and season.
@@ -126,6 +130,7 @@ Presenters: **Jnanottam** (J) and **Harshavardha** (H) · Total time: about 10�
 **J:** We also added an AI assistant that runs on a free language model. It reads **only our aggregated results**, never the raw data, and explains them in plain language. *(Let it answer and read one line.)*
 
 **H:** To conclude:
+
 - Pollution in India is strongly **seasonal**: winter is worst and monsoon is cleanest.
 - **North Indian cities** are the most polluted.
 - The **lockdown** showed that cutting emissions improves air quickly.
