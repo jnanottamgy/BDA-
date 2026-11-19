@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Air Quality Explorer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--fg:#14202b;--mut:#5d6d7e;--acc:#0a7cc2;--line:#e2e8ef;--good:#2e9d5b;--bad:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#0e151c;--card:#16212c;--fg:#e6edf3;--mut:#93a4b5;--acc:#4fb3f0;--line:#253442}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,Segoe UI,Arial,sans-serif}
+header{background:linear-gradient(120deg,#0a4d7a,#0a7cc2 60%,#2e9d5b);color:#fff;padding:36px 16px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header h1{margin:6px 0 8px;font-size:clamp(22px,3.4vw,34px);line-height:1.2}
+header p{margin:0;opacity:.9}
+nav.tabs{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap}
+nav.tabs button{background:none;border:0;color:var(--mut);padding:14px 16px;font:inherit;cursor:pointer;border-bottom:3px solid transparent}
+nav.tabs button.on{color:var(--acc);border-color:var(--acc);font-weight:600}
+section.tab{display:none;padding:24px 0 60px}section.tab.on{display:block}
+h2{margin:0 0 14px;font-size:22px}h3{margin:0 0 8px;font-size:16px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g2{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(440px,1fr))}
+@media(max-width:520px){.g2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.kpi .v{font-size:28px;font-weight:700;color:var(--acc)}.kpi .l{color:var(--mut);font-size:13px}
+.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--mut);font-weight:600}
+.drop{border:2px dashed var(--acc);border-radius:12px;padding:28px;text-align:center;background:var(--card)}
+button.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:inherit;cursor:pointer}
+button.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
+.status{margin-top:12px;font-family:ui-monospace,Consolas,monospace;font-size:13px;white-space:pre-wrap;color:var(--mut)}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.flow span{background:var(--bg);border:1px solid var(--line);padding:8px 12px;border-radius:8px}.flow i{color:var(--acc);font-style:normal;font-weight:700}
+.chart{position:relative;height:320px}
+.insight{border-left:4px solid var(--acc);padding:8px 12px;background:var(--bg);border-radius:4px;margin-top:10px;font-size:14px}
+.chat{height:420px;overflow-y:auto;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--line)}
+.msg{margin:8px 0;padding:10px 12px;border-radius:10px;max-width:88%;white-space:pre-wrap}
+.msg.u{background:var(--acc);color:#fff;margin-left:auto}.msg.a{background:var(--card);border:1px solid var(--line)}
+.pill{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 12px;margin:4px 4px 0 0;cursor:pointer;font-size:13px}
+.empty{color:var(--mut);text-align:center;padding:30px}
+code{background:var(--bg);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div style="opacity:.85;font-size:13px">Ramaiah Institute of Technology · CSE557 Big Data Analytics · 2026</div>
+  <h1>Scalable Analysis of Hourly Air Quality Data from Indian Monitoring Stations</h1>
+  <p>Harshavardha Satish Kumar (1MS24CS065) · Guide: Uzma Sultana</p>
+</div></header>
+
+<nav class="tabs"><div class="wrap">
+  <button data-t="overview" class="on">Overview</button><button data-t="data">1 · Load Data</button><button data-t="quality">2 · Data Quality</button>
+  <button data-t="time">3 · Time Patterns</button><button data-t="cities">4 · Cities</button><button data-t="lockdown">5 · Lockdown</button>
+  <button data-t="perf">6 · Performance</button><button data-t="ai">🤖 Ask AI</button>
+</div></nav>
+
+<main class="wrap">
+<!-- OVERVIEW -->
+<section class="tab on" id="overview">
+  <div class="grid">
+    <div class="card"><h3>Problem</h3><p>CPCB stations record PM2.5, PM10, NO₂, SO₂, CO and O₃ every hour, producing millions of readings. The aim is to process them at scale and find when, where and how pollution changes.</p></div>
+    <div class="card"><h3>Base paper</h3><p>Bogomolov &amp; Plotnikov (2024), <i>Big Data technologies for atmospheric air pollution data</i>, Computational Nanotechnology 11(1). It processes station data with PySpark and compares it with Pandas.</p></div>
+    <div class="card"><h3>Our contribution</h3><p>A reproducible pipeline on public Indian CPCB data, with documented cleaning rules and a defined benchmark, plus this interactive explorer.</p></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>Research questions</h3>
+    <ol><li>Which months, seasons and hours have the highest PM2.5 and PM10?</li><li>Which cities and stations are the most polluted?</li><li>How are AQI categories distributed?</li><li>How did the March–May 2020 lockdown change pollution?</li><li>How complete is the sensor data?</li><li>How does Spark-style processing compare with single-threaded Pandas?</li></ol></div>
+  <div class="card" style="margin-top:16px"><h3>Pipeline</h3>
+    <div class="flow"><span>CSV upload</span><i>→</i><span>Remove duplicates</span><i>→</i><span>Range checks → null</span><i>→</i><span>Join stations</span><i>→</i><span>Year / month / hour / season</span><i>→</i><span>SQL aggregates</span><i>→</i><span>Charts</span><i>→</i><span>AI insights</span></div>
+    <p class="mut" style="margin-top:12px">This page runs <b>DuckDB-WASM</b>, a columnar SQL engine, inside your browser. The same SQL runs in PySpark (<code>src/spark_pipeline.py</code>) for the course submission. No data leaves your computer, except the summary you choose to send to the AI.</p></div>
+  <div class="grid" style="margin-top:16px">
+    <div class="card"><h3>Volume</h3>About 2.6M hourly rows</div><div class="card"><h3>Variety</h3>12 pollutants, AQI and station metadata</div>
+    <div class="card"><h3>Veracity</h3>Many sensor gaps</div><div class="card"><h3>Velocity</h3>Hourly data, processed as a batch</div>
+  </div>
+</section>
+
+<!-- LOAD -->
+<section class="tab" id="data">
+  <h2>Load the dataset</h2>
+  <div class="drop">
+    <p>Download <b>Air Quality Data in India (2015–2020)</b> from Kaggle (<code>rohanrao/air-quality-data-in-india</code>).</p>
+    <p>Select <b>city_hour.csv</b>, or <b>station_hour.csv</b> together with <b>stations.csv</b>. You can select several files at once.</p>
+    <input type="file" id="files" accept=".csv" multiple style="max-width:420px;margin:10px auto;display:block">
+    <button class="btn" id="run" disabled>Run analysis</button>
+  </div>
+  <div class="status" id="log">Loading SQL engine…</div>
+</section>
+
+<section class="tab" id="quality"><h2>Data quality</h2><div id="q-body" class="empty">Load data first.</div></section>
+
+<section class="tab" id="time"><h2>Time patterns</h2><div id="t-body" class="empty">Load data first.</div>
+  <div class="g2" id="t-charts" hidden>
+    <div class="card" style="grid-column:1/-1"><h3>Monthly average PM2.5 and PM10</h3><div class="chart"><canvas id="c-month"></canvas></div><div class="insight" id="i-month"></div></div>
+    <div class="card"><h3>Hour of day</h3><div class="chart"><canvas id="c-hour"></canvas></div><div class="insight" id="i-hour"></div></div>
+    <div class="card"><h3>Season</h3><div class="chart"><canvas id="c-season"></canvas></div><div class="insight" id="i-season"></div></div>
+  </div></section>
+
+<section class="tab" id="cities"><h2>Cities and AQI categories</h2><div id="c-body" class="empty">Load data first.</div>
+  <div class="g2" id="c-charts" hidden>
+    <div class="card"><h3>Mean PM2.5 by city</h3><div class="chart" style="height:560px"><canvas id="c-city"></canvas></div></div>
+    <div class="card"><h3>AQI category share by city</h3><div class="chart" style="height:560px"><canvas id="c-aqi"></canvas></div></div>
+  </div><div class="insight" id="i-city" hidden></div></section>
+
+<section class="tab" id="lockdown"><h2>COVID-19 lockdown: Mar–May 2020 vs Mar–May 2017–2019</h2><div id="l-body" class="empty">Load data first.</div>
+  <div class="g2" id="l-charts" hidden>
+    <div class="card"><h3>Average by pollutant</h3><div class="chart"><canvas id="c-lock"></canvas></div></div>
+    <div class="card"><h3>% change in PM2.5 by city</h3><div class="chart"><canvas id="c-lockcity"></canvas></div></div>
+  </div><div class="insight" id="i-lock" hidden></div></section>
+
+<section class="tab" id="perf"><h2>Performance</h2>
+  <div class="card"><p>Times below are measured live in this browser for the same queries on 25%, 50% and 100% of the data. Two engines are compared: the <b>columnar SQL engine</b> (DuckDB-WASM, which works like Spark SQL) and <b>plain row-by-row JavaScript</b> (the single-threaded baseline, like Pandas). The PySpark-vs-Pandas results come from <code>src/benchmark.py</code>. You can load its <code>benchmark.csv</code> below.</p>
+    <button class="btn" id="bench" disabled>Run benchmark</button> <label style="display:inline-block;width:auto;margin-left:10px">PySpark benchmark.csv: <input type="file" id="benchcsv" accept=".csv" style="width:auto"></label></div>
+  <div class="g2" style="margin-top:16px"><div class="card"><h3>Browser benchmark</h3><div class="chart"><canvas id="c-bench"></canvas></div><div id="bench-tbl"></div></div>
+  <div class="card"><h3>PySpark vs Pandas (from benchmark.csv)</h3><div class="chart"><canvas id="c-spark"></canvas></div><div id="spark-tbl" class="mut">Not loaded.</div></div></div>
+</section>
+
+<!-- AI -->
+<section class="tab" id="ai"><h2>Ask AI about the results</h2>
+  <div class="g2">
+    <div class="card">
+      <h3>Free AI model</h3>
+      <label>Provider<select id="prov">
+        <option value="openrouter">OpenRouter (free models, no card needed)</option>
+        <option value="groq">Groq (free tier)</option>
+        <option value="gemini">Google Gemini (free tier)</option>
+      </select></label>
+      <label style="display:block;margin-top:10px">Model<input id="model"></label>
+      <label style="display:block;margin-top:10px">API key <span class="mut" id="keyhelp"></span><input id="key" type="password" placeholder="Paste your free key (kept only in this browser)"></label>
+      <p class="mut" style="font-size:13px">Your key is saved only in this browser. When you ask a question, the page sends the <b>aggregated results</b> (averages and counts, not raw rows) and your question to the provider you chose.</p>
+    </div>
+    <div class="card">
+      <div class="chat" id="chat"><div class="empty">Run the analysis, then ask anything, e.g. "Summarise the key findings for my viva".</div></div>
+      <div>
+        <span class="pill">Summarise the 5 key findings</span><span class="pill">Explain the lockdown impact</span><span class="pill">Why is winter worse?</span><span class="pill">Write my conclusion slide</span><span class="pill">Likely viva questions and answers</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px"><input id="q" placeholder="Ask a question…"><button class="btn" id="send">Send</button></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script type="module">
+import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm';
+const $ = s => document.querySelector(s);
+const log = t => { $('#log').textContent += '\n' + t; };
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('on', s.id === b.dataset.t));
+});
+
+const POLS = ['PM2.5','PM10','NO','NO2','NOx','NH3','CO','SO2','O3','Benzene','Toluene','Xylene'];
+const RANGE = Object.fromEntries(POLS.map(p => [p, p==='PM10'?2000 : p==='CO'?200 : 1000]));
+const AQI = ['Good','Satisfactory','Moderate','Poor','Very Poor','Severe'];
+const AQI_C = ['#2e9d5b','#9ccc65','#f4c20d','#ef8c1a','#d9412b','#7b1414'];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (n, d=1) => n==null||isNaN(n) ? '–' : Number(n).toLocaleString('en-IN',{maximumFractionDigits:d});
+const RESULTS = {}; const charts = {};
+
+let db, conn;
+try {
+  const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+  const wurl = URL.createObjectURL(new Blob([`importScripts("${bundle.mainWorker}");`], {type:'text/javascript'}));
+  db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(wurl));
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  conn = await db.connect();
+  $('#log').textContent = 'SQL engine ready. Choose your CSV files.';
+} catch (e) { $('#log').textContent = 'Could not load the SQL engine (internet needed the first time): ' + e; }
+
+$('#files').onchange = () => { $('#run').disabled = !$('#files').files.length || !conn; };
+const q = async sql => (await conn.query(sql)).toArray().map(r => { const o = r.toJSON(); for (const k in o) if (typeof o[k]==='bigint') o[k]=Number(o[k]); return o; });
+const qi = s => `"${s}"`;
+
+function mkChart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  Chart.defaults.color = css('--mut'); Chart.defaults.borderColor = css('--line');
+  cfg.options = Object.assign({responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}}, cfg.options||{});
+  charts[id] = new Chart($('#'+id), cfg);
+}
+
+$('#run').onclick = async () => {
+  $('#run').disabled = true; const T0 = performance.now();
+  try {
+    const files = [...$('#files').files];
+    let main = files.find(f => /station_hour/i.test(f.name)) || files.find(f => /city_hour/i.test(f.name)) || files.find(f => !/stations/i.test(f.name));
+    const st = files.find(f => /^stations/i.test(f.name));
+    for (const f of files) await db.registerFileHandle(f.name, f, duckdb.DuckDBDataProtocol.BROWSER_FILEREADER, true);
+    log(`Reading ${main.name} (${(main.size/1e6).toFixed(0)} MB)…`);
+    await q(`CREATE OR REPLACE TABLE raw AS SELECT * FROM read_csv('${main.name}', header=true, all_varchar=true)`);
+    const cols = (await q(`SELECT column_name c FROM information_schema.columns WHERE table_name='raw'`)).map(r => r.c);
+    const pols = POLS.filter(p => cols.includes(p));
+    const keyCol = cols.includes('StationId') ? 'StationId' : 'City';
+    const rawN = (await q(`SELECT COUNT(*) n FROM raw`))[0].n;
+    log(`${fmt(rawN,0)} raw rows · columns: ${cols.join(', ')}`);
+
+    // completeness (raw)
+    const comp = (await q(`SELECT ${pols.map(p => `100.0*COUNT(TRY_CAST(${qi(p)} AS DOUBLE))/COUNT(*) AS ${qi(p)}`).join(',')} FROM raw`))[0];
+
+    // clean
+    const dedupN = (await q(`SELECT COUNT(*) n FROM (SELECT DISTINCT ${keyCol}, Datetime FROM raw)`))[0].n;
+    let cityExpr = `City`, join = '';
+    if (keyCol === 'StationId') {
+      if (!st) throw new Error('station_hour.csv needs stations.csv too (for city names). Select both files.');
+      await q(`CREATE OR REPLACE TABLE stations AS SELECT * FROM read_csv('${st.name}', header=true, all_varchar=true)`);
+      join = `LEFT JOIN stations s USING (StationId)`; cityExpr = `s.City`;
+    }
+    const polSel = pols.map(p => `CASE WHEN TRY_CAST(r.${qi(p)} AS DOUBLE) BETWEEN 0 AND ${RANGE[p]} THEN TRY_CAST(r.${qi(p)} AS DOUBLE) END AS ${qi(p)}`).join(',');
+    await q(`CREATE OR REPLACE TABLE aq AS
+      WITH d AS (SELECT * FROM raw QUALIFY ROW_NUMBER() OVER (PARTITION BY ${keyCol}, Datetime) = 1)
+      SELECT r.${keyCol} AS key, ${cityExpr} AS city, ${keyCol==='StationId'?'s.StationName':'NULL'} AS station,
+             TRY_CAST(r.Datetime AS TIMESTAMP) ts, ${polSel},
+             TRY_CAST(r.AQI AS DOUBLE) aqi, NULLIF(r.AQI_Bucket,'') bucket
+      FROM d r ${join}`);
+    await q(`DELETE FROM aq WHERE ts IS NULL OR (${qi('PM2.5')} IS NULL AND ${pols.includes('PM10')?'PM10':'NULL'} IS NULL)`);
+    await q(`ALTER TABLE aq ADD COLUMN yr INT; ALTER TABLE aq ADD COLUMN mo INT; ALTER TABLE aq ADD COLUMN hr INT;
+             UPDATE aq SET yr=year(ts), mo=month(ts), hr=hour(ts)`);
+    const cleanN = (await q(`SELECT COUNT(*) n FROM aq`))[0].n;
+    const span = (await q(`SELECT MIN(ts)::VARCHAR a, MAX(ts)::VARCHAR b, COUNT(DISTINCT city) c, COUNT(DISTINCT key) k FROM aq`))[0];
+    RESULTS.quality = {rawN, dupRemoved: rawN-dedupN, cleanN, span, completeness: comp, keyCol};
+    log(`Cleaned: ${fmt(cleanN,0)} rows kept.`);
+    renderQuality();
+
+    // analyses
+    const PM = qi('PM2.5'), P10 = pols.includes('PM10') ? 'PM10' : 'NULL';
+    RESULTS.monthly = await q(`SELECT yr, mo, AVG(${PM}) pm25, AVG(${P10}) pm10 FROM aq GROUP BY ALL ORDER BY yr, mo`);
+    RESULTS.hourly = await q(`SELECT hr, AVG(${PM}) pm25, AVG(${P10}) pm10 FROM aq GROUP BY hr ORDER BY hr`);
+    RESULTS.season = await q(`SELECT CASE WHEN mo IN (12,1,2) THEN 'Winter' WHEN mo IN (3,4,5) THEN 'Summer' WHEN mo BETWEEN 6 AND 9 THEN 'Monsoon' ELSE 'Post-monsoon' END season,
+                              AVG(${PM}) pm25, AVG(${P10}) pm10 FROM aq GROUP BY 1`);
+    RESULTS.city = await q(`SELECT city, AVG(${PM}) pm25, AVG(${P10}) pm10, COUNT(*) n FROM aq WHERE city IS NOT NULL GROUP BY city HAVING COUNT(*)>1000 AND AVG(${PM}) IS NOT NULL ORDER BY pm25 DESC`);
+    RESULTS.station = keyCol==='StationId' ? await q(`SELECT station, city, AVG(${PM}) pm25, COUNT(*) n FROM aq GROUP BY ALL HAVING COUNT(*)>1000 AND AVG(${PM}) IS NOT NULL ORDER BY pm25 DESC LIMIT 10`) : [];
+    RESULTS.aqi = await q(`SELECT city, bucket, COUNT(*) n FROM aq WHERE bucket IS NOT NULL AND city IS NOT NULL GROUP BY ALL`);
+    const lp = ['PM2.5','PM10','NO2','CO','SO2','O3'].filter(p => pols.includes(p));
+    RESULTS.lockdown = await q(`SELECT CASE WHEN yr=2020 THEN '2020' ELSE '2017-2019' END period, ${lp.map(p => `AVG(${qi(p)}) ${qi(p)}`).join(',')}
+                                FROM aq WHERE mo IN (3,4,5) AND yr BETWEEN 2017 AND 2020 GROUP BY 1`);
+    RESULTS.lockCity = await q(`SELECT city, 100*(AVG(${PM}) FILTER (yr=2020) / AVG(${PM}) FILTER (yr<2020) - 1) chg
+                                FROM aq WHERE mo IN (3,4,5) AND yr BETWEEN 2017 AND 2020 AND city IS NOT NULL GROUP BY city
+                                HAVING COUNT(*) FILTER (yr=2020) > 200 AND COUNT(*) FILTER (yr<2020) > 200 ORDER BY chg`);
+    RESULTS.lockPols = lp;
+    renderTime(); renderCities(); renderLockdown();
+    log(`Done in ${((performance.now()-T0)/1000).toFixed(1)} s. Open the tabs above.`);
+    $('#bench').disabled = false;
+  } catch (e) { log('ERROR: ' + e.message); console.error(e); }
+  $('#run').disabled = false;
+};
+
+function renderQuality() {
+  const r = RESULTS.quality;
+  $('#q-body').className = '';
+  $('#q-body').innerHTML = `<div class="grid">
+    <div class="card kpi"><div class="v">${fmt(r.rawN,0)}</div><div class="l">Raw records</div></div>
+    <div class="card kpi"><div class="v">${fmt(r.dupRemoved,0)}</div><div class="l">Duplicates removed</div></div>
+    <div class="card kpi"><div class="v">${fmt(r.cleanN,0)}</div><div class="l">Records after cleaning</div></div>
+    <div class="card kpi"><div class="v">${r.span.c} / ${r.span.k}</div><div class="l">Cities / ${r.keyCol==='StationId'?'stations':'series'}</div></div></div>
+    <div class="card" style="margin-top:16px"><h3>Completeness per pollutant (raw data)</h3><p class="mut">Period: ${r.span.a?.slice(0,10)} to ${r.span.b?.slice(0,10)}</p>
+    <table><tr><th>Pollutant</th><th>% present</th><th></th></tr>${Object.entries(r.completeness).map(([k,v]) =>
+      `<tr><td>${k}</td><td>${fmt(v)}%</td><td style="width:55%"><div style="height:10px;border-radius:5px;background:${v>75?'var(--good)':v>50?'#f4c20d':'var(--bad)'};width:${v}%"></div></td></tr>`).join('')}</table>
+    <div class="insight"><b>Cleaning rules:</b> remove duplicate (${r.keyCol}, Datetime) rows; set unreadable or out-of-range values to null (0–1000 µg/m³, PM10 up to 2000, CO up to 200 mg/m³); drop rows with no PM reading or no valid timestamp.</div></div>`;
+}
+
+function renderTime() {
+  $('#t-body').hidden = true; $('#t-charts').hidden = false;
+  const m = RESULTS.monthly, lab = m.map(r => `${r.yr}-${String(r.mo).padStart(2,'0')}`);
+  mkChart('c-month', {type:'line', data:{labels:lab, datasets:[
+    {label:'PM2.5', data:m.map(r=>r.pm25), borderColor:'#0a7cc2', pointRadius:0, tension:.25},
+    {label:'PM10', data:m.map(r=>r.pm10), borderColor:'#ef8c1a', pointRadius:0, tension:.25}]},
+    options:{scales:{y:{title:{display:true,text:'µg/m³'}}}}});
+  const top = [...m].sort((a,b)=>b.pm25-a.pm25)[0], low = [...m].sort((a,b)=>a.pm25-b.pm25)[0];
+  $('#i-month').innerHTML = `Highest month: <b>${top.yr}-${top.mo}</b> (${fmt(top.pm25)} µg/m³). Lowest: <b>${low.yr}-${low.mo}</b> (${fmt(low.pm25)} µg/m³).`;
+  const h = RESULTS.hourly;
+  mkChart('c-hour', {type:'line', data:{labels:h.map(r=>r.hr+':00'), datasets:[
+    {label:'PM2.5', data:h.map(r=>r.pm25), borderColor:'#0a7cc2', fill:false},{label:'PM10', data:h.map(r=>r.pm10), borderColor:'#ef8c1a'}]}});
+  const hp = [...h].sort((a,b)=>b.pm25-a.pm25)[0], hl = [...h].sort((a,b)=>a.pm25-b.pm25)[0];
+  $('#i-hour').innerHTML = `PM2.5 peaks at <b>${hp.hr}:00</b> (${fmt(hp.pm25)}) and is lowest at <b>${hl.hr}:00</b> (${fmt(hl.pm25)}).`;
+  const order = ['Winter','Summer','Monsoon','Post-monsoon'], s = order.map(o => RESULTS.season.find(r=>r.season===o)||{});
+  mkChart('c-season', {type:'bar', data:{labels:order, datasets:[{label:'PM2.5', data:s.map(r=>r.pm25), backgroundColor:'#0a7cc2'},{label:'PM10', data:s.map(r=>r.pm10), backgroundColor:'#ef8c1a'}]}});
+  const ss = [...s].sort((a,b)=>b.pm25-a.pm25);
+  $('#i-season').innerHTML = `<b>${ss[0].season}</b> is the most polluted season and <b>${ss[3].season}</b> the cleanest (PM2.5 ${fmt(ss[0].pm25)} vs ${fmt(ss[3].pm25)}).`;
+}
+
+function renderCities() {
+  $('#c-body').hidden = true; $('#c-charts').hidden = false; $('#i-city').hidden = false;
+  const c = RESULTS.city;
+  mkChart('c-city', {type:'bar', data:{labels:c.map(r=>r.city), datasets:[{label:'Mean PM2.5 (µg/m³)', data:c.map(r=>r.pm25),
+    backgroundColor:c.map(r=>r.pm25>90?'#c0392b':r.pm25>60?'#ef8c1a':r.pm25>30?'#f4c20d':'#2e9d5b')}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}}});
+  const cities = [...new Set(RESULTS.aqi.map(r=>r.city))];
+  const tot = Object.fromEntries(cities.map(ci => [ci, RESULTS.aqi.filter(r=>r.city===ci).reduce((a,r)=>a+r.n,0)]));
+  const good = ci => (RESULTS.aqi.find(r=>r.city===ci&&r.bucket==='Good')?.n||0)/tot[ci];
+  cities.sort((a,b)=>good(a)-good(b));
+  mkChart('c-aqi', {type:'bar', data:{labels:cities, datasets:AQI.map((b,i)=>({label:b, backgroundColor:AQI_C[i],
+    data:cities.map(ci => 100*(RESULTS.aqi.find(r=>r.city===ci&&r.bucket===b)?.n||0)/tot[ci])}))},
+    options:{indexAxis:'y', scales:{x:{stacked:true,max:100,title:{display:true,text:'% of hours'}}, y:{stacked:true}}}});
+  const st = RESULTS.station.length ? `<br>Most polluted station: <b>${RESULTS.station[0].station}</b>, ${RESULTS.station[0].city} (${fmt(RESULTS.station[0].pm25)}).` : '';
+  $('#i-city').innerHTML = `Most polluted: <b>${c.slice(0,3).map(r=>`${r.city} (${fmt(r.pm25)})`).join(', ')}</b>. Cleanest: <b>${c.slice(-3).reverse().map(r=>`${r.city} (${fmt(r.pm25)})`).join(', ')}</b>.${st}`;
+}
+
+function renderLockdown() {
+  const L = RESULTS.lockdown, a = L.find(r=>r.period==='2017-2019'), b = L.find(r=>r.period==='2020');
+  if (!a || !b) { $('#l-body').textContent = 'The data does not cover Mar–May of both 2020 and 2017–2019.'; return; }
+  $('#l-body').hidden = true; $('#l-charts').hidden = false; $('#i-lock').hidden = false;
+  const P = RESULTS.lockPols, chg = P.map(p => 100*(b[p]/a[p]-1));
+  RESULTS.lockChange = Object.fromEntries(P.map((p,i)=>[p, +chg[i].toFixed(1)]));
+  mkChart('c-lock', {type:'bar', data:{labels:P.map((p,i)=>`${p} (${chg[i]>0?'+':''}${chg[i].toFixed(0)}%)`), datasets:[
+    {label:'Mar–May 2017–2019', data:P.map(p=>a[p]), backgroundColor:'#8a97a5'},{label:'Mar–May 2020', data:P.map(p=>b[p]), backgroundColor:'#0a7cc2'}]}});
+  const lc = RESULTS.lockCity;
+  mkChart('c-lockcity', {type:'bar', data:{labels:lc.map(r=>r.city), datasets:[{label:'% change in PM2.5', data:lc.map(r=>r.chg),
+    backgroundColor:lc.map(r=>r.chg<0?'#2e9d5b':'#c0392b')}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}}});
+  $('#i-lock').innerHTML = `During the lockdown months, the change was ${P.map((p,i)=>`<b>${p} ${chg[i]>0?'+':''}${chg[i].toFixed(0)}%</b>`).join(', ')} compared with the same months in 2017–2019. ` +
+    (P.includes('O3') && RESULTS.lockChange.O3 > 0 ? 'Ozone rose, as expected: less NO to react with means ozone builds up.' : '');
+}
+
+// ---- Benchmark ----
+$('#bench').onclick = async () => {
+  $('#bench').disabled = true; const rows = [];
+  const all = await q(`SELECT key, mo, hr, bucket, ${qi('PM2.5')} pm FROM aq`);
+  for (const f of [0.25, 0.5, 1]) {
+    const n = Math.floor(all.length*f); let tS=0, tJ=0;
+    for (let run=0; run<3; run++) {
+      let t = performance.now();
+      await q(`SELECT key, AVG(${qi('PM2.5')}) FROM (SELECT * FROM aq LIMIT ${n}) GROUP BY key`);
+      await q(`SELECT mo, AVG(${qi('PM2.5')}) FROM (SELECT * FROM aq LIMIT ${n}) GROUP BY mo`);
+      await q(`SELECT hr, bucket, COUNT(*) FROM (SELECT * FROM aq LIMIT ${n}) GROUP BY ALL`);
+      tS += performance.now()-t;
+      t = performance.now();
+      const g1={}, g2={}, g3={};
+      for (let i=0;i<n;i++){ const r=all[i];
+        if (r.pm!=null){ (g1[r.key]??=[0,0]); g1[r.key][0]+=r.pm; g1[r.key][1]++; (g2[r.mo]??=[0,0]); g2[r.mo][0]+=r.pm; g2[r.mo][1]++; }
+        const k=r.hr+'|'+r.bucket; g3[k]=(g3[k]||0)+1; }
+      tJ += performance.now()-t;
+    }
+    rows.push({pct:f*100, n, sql:tS/3/1000, js:tJ/3/1000});
+  }
+  mkChart('c-bench', {type:'line', data:{labels:rows.map(r=>fmt(r.n,0)+' rows'), datasets:[
+    {label:'Columnar SQL engine (s)', data:rows.map(r=>r.sql), borderColor:'#0a7cc2'},{label:'Row-by-row JS (s)', data:rows.map(r=>r.js), borderColor:'#c0392b'}]}});
+  $('#bench-tbl').innerHTML = `<table><tr><th>Data</th><th>Rows</th><th>SQL s</th><th>JS s</th></tr>${rows.map(r=>`<tr><td>${r.pct}%</td><td>${fmt(r.n,0)}</td><td>${r.sql.toFixed(3)}</td><td>${r.js.toFixed(3)}</td></tr>`).join('')}</table>
+    <p class="mut" style="font-size:13px">The JS timing excludes data loading, which was already done. Mean of 3 runs on ${navigator.hardwareConcurrency} logical cores.</p>`;
+  RESULTS.browserBench = rows; $('#bench').disabled = false;
+};
+$('#benchcsv').onchange = async e => {
+  const txt = await e.target.files[0].text(), [h, ...ls] = txt.trim().split(/\r?\n/), H = h.split(',');
+  const rows = ls.map(l => Object.fromEntries(l.split(',').map((v,i)=>[H[i], +v])));
+  RESULTS.sparkBench = rows;
+  mkChart('c-spark', {type:'bar', data:{labels:rows.map(r=>`${r.fraction*100}% (${fmt(r.rows,0)})`), datasets:[
+    {label:'Pandas (s)', data:rows.map(r=>r.pandas_s), backgroundColor:'#c0392b'},{label:'PySpark (s)', data:rows.map(r=>r.spark_s), backgroundColor:'#0a7cc2'}]}});
+  $('#spark-tbl').innerHTML = `<table><tr><th>Data</th><th>Pandas s</th><th>PySpark s</th><th>Speedup</th></tr>${rows.map(r=>`<tr><td>${r.fraction*100}%</td><td>${r.pandas_s.toFixed(2)}</td><td>${r.spark_s.toFixed(2)}</td><td><b>${r.speedup.toFixed(2)}×</b></td></tr>`).join('')}</table>`;
+};
+
+// ---- AI ----
+const PROV = {
+  openrouter:{url:'https://openrouter.ai/api/v1/chat/completions', model:'meta-llama/llama-3.3-70b-instruct:free', help:'free key at openrouter.ai/keys'},
+  groq:{url:'https://api.groq.com/openai/v1/chat/completions', model:'llama-3.3-70b-versatile', help:'free key at console.groq.com/keys'},
+  gemini:{url:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model:'gemini-2.0-flash', help:'free key at aistudio.google.com/apikey'},
+};
+const store = { get:k=>{try{return localStorage.getItem(k)}catch{return null}}, set:(k,v)=>{try{localStorage.setItem(k,v)}catch{}} };
+function setProv(){ const p=PROV[$('#prov').value]; $('#model').value = store.get('model_'+$('#prov').value) || p.model; $('#key').value = store.get('key_'+$('#prov').value) || ''; $('#keyhelp').textContent='('+p.help+')'; }
+$('#prov').value = store.get('prov') || 'openrouter'; setProv();
+$('#prov').onchange = () => { store.set('prov', $('#prov').value); setProv(); };
+$('#key').onchange = () => store.set('key_'+$('#prov').value, $('#key').value.trim());
+$('#model').onchange = () => store.set('model_'+$('#prov').value, $('#model').value.trim());
+const history = [];
+function addMsg(role, text){ const c=$('#chat'); if(c.querySelector('.empty')) c.innerHTML=''; const d=document.createElement('div'); d.className='msg '+(role==='user'?'u':'a'); d.textContent=text; c.appendChild(d); c.scrollTop=c.scrollHeight; return d; }
+function context(){
+  if (!RESULTS.quality) return 'No data has been analysed yet.';
+  const r2 = o => JSON.stringify(o, (k,v)=> typeof v==='number' ? +v.toFixed(2) : v);
+  return `Project: Scalable analysis of hourly CPCB air quality data (India 2015-2020) with PySpark, for a Big Data Analytics course (RIT, CSE557). Base paper: Bogomolov & Plotnikov 2024 (PySpark vs Pandas for air monitoring data).
+DATA QUALITY: ${r2(RESULTS.quality)}
+MONTHLY AVG (yr,mo,pm25,pm10): ${r2(RESULTS.monthly)}
+HOUR OF DAY: ${r2(RESULTS.hourly)}
+SEASON: ${r2(RESULTS.season)}
+CITY RANKING: ${r2(RESULTS.city)}
+TOP STATIONS: ${r2(RESULTS.station)}
+LOCKDOWN Mar-May 2020 vs 2017-2019: ${r2(RESULTS.lockdown)} %change: ${r2(RESULTS.lockChange)}; by city: ${r2(RESULTS.lockCity)}
+BROWSER BENCHMARK: ${r2(RESULTS.browserBench||'not run')}
+PYSPARK BENCHMARK: ${r2(RESULTS.sparkBench||'not loaded')}`;
+}
+async function ask(text){
+  if (!text.trim()) return; const p = PROV[$('#prov').value], key = $('#key').value.trim();
+  addMsg('user', text); $('#q').value='';
+  if (!key) { addMsg('assistant', 'Paste a free API key on the left first.'); return; }
+  history.push({role:'user', content:text}); const out = addMsg('assistant', 'Thinking…');
+  try {
+    const res = await fetch(p.url, {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+key},
+      body: JSON.stringify({model:$('#model').value.trim(), temperature:0.3, messages:[
+        {role:'system', content:'You are an expert data analyst helping a student present a Big Data Analytics project. Answer ONLY from the results below. Quote real numbers, be concise, use short bullet points. If something is not in the results, say so.\n\n'+context()},
+        ...history.slice(-8)]})});
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error?.message || JSON.stringify(j).slice(0,300));
+    const ans = j.choices[0].message.content; out.textContent = ans; history.push({role:'assistant', content:ans});
+  } catch(e) { out.textContent = 'Error: ' + e.message + '\n(Check the key or model name, or try another provider.)'; history.pop(); }
+}
+$('#send').onclick = () => ask($('#q').value);
+$('#q').onkeydown = e => { if (e.key==='Enter') ask($('#q').value); };
+document.querySelectorAll('.pill').forEach(p => p.onclick = () => ask(p.textContent));
+</script>
+</body>
+</html>
