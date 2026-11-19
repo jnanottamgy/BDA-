@@ -1,0 +1,3 @@
+data/*.csv
+output/clean_parquet/
+__pycache__/

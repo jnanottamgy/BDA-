@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Air Quality BDA</title>
+<style>
+:root{--bg:#0f1720;--card:#16212d;--fg:#e8eef4;--mut:#9fb0c0;--acc:#4fc3f7;--red:#ef5350}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.5 system-ui,Segoe UI,Arial}
+.slide{display:none;min-height:100vh;padding:5vh 7vw;flex-direction:column;justify-content:center}.slide.on{display:flex}
+h1{font-size:2.6em;margin:.2em 0;line-height:1.15}h2{color:var(--acc);font-size:1.8em;margin:0 0 .6em}
+.mut{color:var(--mut)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{background:var(--card);border-radius:12px;padding:16px 20px}.card b{color:var(--acc)}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #2a3a4a;padding:8px;text-align:left}
+img{max-width:100%;max-height:62vh;border-radius:8px;background:#fff;align-self:center}
+.ph{border:2px dashed #3a4a5a;border-radius:12px;padding:40px;text-align:center;color:var(--mut)}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.flow span{background:var(--card);padding:10px 16px;border-radius:8px}.flow i{color:var(--acc);font-style:normal}
+nav{position:fixed;bottom:14px;right:20px;color:var(--mut);font-size:14px}nav button{background:var(--card);color:var(--fg);border:0;padding:6px 12px;border-radius:6px;cursor:pointer}
+</style></head><body>
+
+<section class="slide"><p class="mut">Ramaiah Institute of Technology · CSE557 Big Data Analytics · 2026</p>
+<h1>Scalable Analysis of Hourly Air Quality Data from Indian Monitoring Stations Using Apache PySpark</h1>
+<p>Harshavardha Satish Kumar · 1MS24CS065<br><span class="mut">Guide: Uzma Sultana</span></p></section>
+
+<section class="slide"><h2>Problem</h2><p>CPCB stations log PM2.5, PM10, NO₂, SO₂, CO and O₃ every hour, producing millions of readings. We need a scalable way to find when, where and how pollution changes.</p>
+<div class="grid"><div class="card"><b>Q1</b> Peak months, seasons and hours</div><div class="card"><b>Q2</b> Most polluted cities and stations</div><div class="card"><b>Q3</b> AQI category distribution</div><div class="card"><b>Q4</b> Effect of the 2020 lockdown</div><div class="card"><b>Q5</b> Data completeness</div><div class="card"><b>Q6</b> PySpark vs Pandas runtime</div></div></section>
+
+<section class="slide"><h2>Base paper</h2><p>Bogomolov &amp; Plotnikov (2024). <i>The possibilities of using Big Data technologies in processing atmospheric air pollution data.</i> Computational Nanotechnology 11(1).</p>
+<div class="grid"><div class="card"><b>They did</b><br>PySpark processing model for gas-analysis station data; Pandas vs PySpark comparison</div><div class="card"><b>Gap</b><br>Results tied to their own data and hardware; no public Indian dataset</div><div class="card"><b>We do</b><br>A reproducible pipeline on public CPCB data with documented cleaning and a defined test setup</div></div></section>
+
+<section class="slide"><h2>Dataset and the 5 V's</h2><table><tr><th>Source</th><td>Air Quality Data in India 2015–2020 (CPCB, Kaggle)</td></tr><tr><th>Main file</th><td>station_hour.csv, about 2.6M hourly rows, 230+ stations, 26 cities</td></tr><tr><th>Attributes</th><td>12 pollutants, AQI, AQI bucket, station metadata</td></tr></table>
+<div class="grid" style="margin-top:16px"><div class="card"><b>Volume</b> millions of rows</div><div class="card"><b>Variety</b> sensors + metadata</div><div class="card"><b>Veracity</b> heavy missingness</div><div class="card"><b>Value</b> policy insights</div><div class="card"><b>Velocity</b> hourly, processed as batch</div></div></section>
+
+<section class="slide"><h2>Architecture</h2><div class="flow"><span>CSV (explicit schema)</span><i>→</i><span>Clean: dedup, types, range checks</span><i>→</i><span>Join stations (broadcast)</span><i>→</i><span>Features: year, month, hour, season</span><i>→</i><span>Parquet (partitioned by year)</span><i>→</i><span>Spark SQL / DataFrame aggregates</span><i>→</i><span>Charts + Pandas benchmark</span></div>
+<p class="mut" style="margin-top:24px">PySpark local[*] · Spark SQL · Parquet · Pandas baseline · Matplotlib/Seaborn</p></section>
+
+<section class="slide"><h2>Data quality</h2><div class="grid"><div class="card">Rows before / after cleaning, duplicates removed, and per-pollutant completeness come from <code>output/data_quality.json</code></div>
+<div class="card"><b>Rules</b><br>• Remove duplicate (station, time) rows<br>• Set out-of-range values to null<br>• Keep rows that have PM2.5 or PM10</div></div></section>
+
+<section class="slide"><h2>Monthly trend</h2><img src="../output/charts/01_monthly_trend.png" alt="Monthly PM trend"></section>
+<section class="slide"><h2>Hour of day and season</h2><div class="grid"><img src="../output/charts/02_hour_of_day.png" alt="Hourly"><img src="../output/charts/03_season.png" alt="Season"></div></section>
+<section class="slide"><h2>Most and least polluted cities</h2><img src="../output/charts/04_cities.png" alt="Cities"></section>
+<section class="slide"><h2>AQI category distribution</h2><img src="../output/charts/05_aqi_distribution.png" alt="AQI"></section>
+<section class="slide"><h2>COVID-19 lockdown impact</h2><img src="../output/charts/06_lockdown.png" alt="Lockdown"></section>
+<section class="slide"><h2>Performance: PySpark vs Pandas</h2><img src="../output/charts/07_benchmark.png" alt="Benchmark"><p class="mut">3 queries × 3 runs × 25/50/100% data. Correctness check: Spark and Pandas monthly means compared. Hardware in <code>output/benchmark_env.json</code>.</p></section>
+
+<section class="slide"><h2>Conclusions</h2><div class="grid"><div class="card"><b>Findings</b><br>Fill in from the charts: peak season and hour, top cities, lockdown % change</div><div class="card"><b>Limitations</b><br>Single machine; Spark start-up overhead on moderate data; sensor gaps</div><div class="card"><b>Future work</b><br>Multi-node cluster, more years, MLlib PM2.5 forecasting</div></div></section>
+
+<section class="slide"><h2>References</h2><ol class="mut"><li>Bogomolov &amp; Plotnikov (2024), doi:10.33693/2313-223X-2024-11-1-162-170</li><li>Air Quality Data in India (2015–2020), CPCB via Kaggle (rohanrao)</li><li>Shih et al. (2021), IJERPH 18(13):7087</li><li>Apache Spark documentation</li></ol><h1 style="margin-top:1em">Thank you</h1></section>
+
+<nav><button onclick="go(-1)">‹</button> <span id="n"></span> <button onclick="go(1)">›</button></nav>
+<script>
+const S=[...document.querySelectorAll('.slide')];let i=0;
+function show(){S.forEach((s,k)=>s.classList.toggle('on',k===i));document.getElementById('n').textContent=(i+1)+' / '+S.length}
+function go(d){i=Math.max(0,Math.min(S.length-1,i+d));show()}
+document.onkeydown=e=>{if(['ArrowRight',' ','PageDown'].includes(e.key))go(1);if(['ArrowLeft','PageUp'].includes(e.key))go(-1)};
+document.querySelectorAll('img').forEach(im=>im.onerror=()=>{const d=document.createElement('div');d.className='ph';d.textContent='Run ./run_all.sh to generate this chart';im.replaceWith(d)});
+show();
+</script></body></html>
